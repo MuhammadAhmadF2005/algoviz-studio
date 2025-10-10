@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
+import datavizLogo from "@/assets/dataviz-logo.png";
 
 const dataStructures = [
   { name: "Array", path: "/array", icon: LayoutGrid },
@@ -32,9 +33,7 @@ export const Sidebar = () => {
     <aside className="w-64 border-r bg-card p-6 flex flex-col gap-6">
       <div className="space-y-2">
         <Link to="/" className="block">
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-            DataViz
-          </h1>
+          <img src={datavizLogo} alt="DataViz Logo" className="h-16 w-auto mb-2" />
           <p className="text-sm text-muted-foreground">Algorithm Visualizer</p>
         </Link>
       </div>
