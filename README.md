@@ -2,6 +2,7 @@
 
 **AlgoViz Studio** is an interactive tool (or library / web app / desktop app—choose correct) for visualizing algorithms and data structures in an intuitive, educational way. It aims to help learners, educators, and developers explore the step-by-step behavior of common algorithms.
 
+Check it out youself at : https://algoviz-studio.lovable.app/ !
 ---
 
 ## 🚀 Features
