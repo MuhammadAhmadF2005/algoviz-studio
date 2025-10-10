@@ -2,8 +2,9 @@ import { useState } from "react";
 import { VisualizationContainer } from "@/components/VisualizationContainer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Plus, Trash2, ArrowRight } from "lucide-react";
+import { Plus, Trash2, ArrowRight, ArrowLeft, MoveRight, MoveLeft } from "lucide-react";
 
 interface Node {
   value: number;
@@ -11,6 +12,7 @@ interface Node {
 }
 
 export const LinkedListVisualizer = () => {
+  const [listType, setListType] = useState<"singly" | "doubly">("singly");
   const [list, setList] = useState<Node[]>([
     { value: 10, id: 1 },
     { value: 20, id: 2 },
@@ -37,17 +39,32 @@ export const LinkedListVisualizer = () => {
     toast.success("Node deleted!");
   };
 
-  const traverse = async () => {
+  const traverseForward = async () => {
     for (const node of list) {
       setHighlightId(node.id);
       await new Promise((resolve) => setTimeout(resolve, 500));
     }
     setHighlightId(null);
-    toast.success("Traversal complete!");
+    toast.success("Forward traversal complete!");
+  };
+
+  const traverseBackward = async () => {
+    for (let i = list.length - 1; i >= 0; i--) {
+      setHighlightId(list[i].id);
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+    setHighlightId(null);
+    toast.success("Backward traversal complete!");
   };
 
   const controls = (
     <>
+      <Tabs value={listType} onValueChange={(v) => setListType(v as "singly" | "doubly")}>
+        <TabsList>
+          <TabsTrigger value="singly">Singly Linked</TabsTrigger>
+          <TabsTrigger value="doubly">Doubly Linked</TabsTrigger>
+        </TabsList>
+      </Tabs>
       <Input
         type="number"
         placeholder="Enter value"
@@ -60,17 +77,27 @@ export const LinkedListVisualizer = () => {
         <Plus className="h-4 w-4 mr-2" />
         Add Node
       </Button>
-      <Button onClick={traverse} variant="secondary" size="sm">
-        <ArrowRight className="h-4 w-4 mr-2" />
-        Traverse
+      <Button onClick={traverseForward} variant="secondary" size="sm">
+        <MoveRight className="h-4 w-4 mr-2" />
+        Traverse Forward
       </Button>
+      {listType === "doubly" && (
+        <Button onClick={traverseBackward} variant="secondary" size="sm">
+          <MoveLeft className="h-4 w-4 mr-2" />
+          Traverse Backward
+        </Button>
+      )}
     </>
   );
 
   return (
     <VisualizationContainer
       title="Linked List Visualizer"
-      description="A linked list is a linear data structure where each element points to the next, allowing dynamic memory allocation."
+      description={
+        listType === "singly"
+          ? "A singly linked list where each node points to the next node."
+          : "A doubly linked list where each node points to both the next and previous nodes."
+      }
       controls={controls}
     >
       <div className="flex items-center gap-2 overflow-x-auto pb-4">
@@ -90,6 +117,11 @@ export const LinkedListVisualizer = () => {
                     HEAD
                   </span>
                 )}
+                {index === list.length - 1 && listType === "doubly" && (
+                  <span className="absolute -bottom-8 text-xs font-semibold text-accent">
+                    TAIL
+                  </span>
+                )}
               </div>
               <Button
                 variant="ghost"
@@ -101,7 +133,12 @@ export const LinkedListVisualizer = () => {
               </Button>
             </div>
             {index < list.length - 1 && (
-              <ArrowRight className="h-6 w-6 text-muted-foreground flex-shrink-0" />
+              <div className="flex flex-col items-center gap-1">
+                <ArrowRight className="h-6 w-6 text-muted-foreground flex-shrink-0" />
+                {listType === "doubly" && (
+                  <ArrowLeft className="h-6 w-6 text-muted-foreground flex-shrink-0" />
+                )}
+              </div>
             )}
           </div>
         ))}
