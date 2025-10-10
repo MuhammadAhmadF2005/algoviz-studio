@@ -21,15 +21,13 @@ Check it out youself at : https://algoviz-studio.lovable.app/ !
 
 | Component | Technology / Tools |
 |-----------|---------------------|
-| Frontend / UI | (e.g. React, Vue, plain JavaScript + Canvas / SVG) |
-| Backend / Engine (if applicable) | (e.g. Node.js, Python, WebAssembly) |
+| Frontend / UI | (React, Vue, Typescript + Canvas / SVG) |
+| Backend / Engine) |  Node.js |
 | Visualization / Graphics | D3.js, Canvas, SVG, or custom rendering |
 | State management | (e.g. Redux, Context API, custom) |
-| Build / Tooling | Webpack, Babel, Vite, etc. |
-| Testing | Jest, Mocha, Cypress, etc. |
-| Deployment | GitHub Pages, Netlify, Vercel, etc. |
+| Build / Tooling | Webpack, Vite, |
+| Deployment | Lovable |
 
-*(Adjust above to match your actual stack.)*
 
 ---
 
