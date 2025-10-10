@@ -3,7 +3,7 @@ import { VisualizationContainer } from "@/components/VisualizationContainer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, RotateCcw } from "lucide-react";
 
 interface TreeNode {
   value: number;
@@ -13,12 +13,14 @@ interface TreeNode {
   y?: number;
 }
 
+const initialTree: TreeNode = {
+  value: 50,
+  left: { value: 30, left: { value: 20, left: null, right: null }, right: { value: 40, left: null, right: null } },
+  right: { value: 70, left: { value: 60, left: null, right: null }, right: { value: 80, left: null, right: null } },
+};
+
 export const TreeVisualizer = () => {
-  const [root, setRoot] = useState<TreeNode | null>({
-    value: 50,
-    left: { value: 30, left: { value: 20, left: null, right: null }, right: { value: 40, left: null, right: null } },
-    right: { value: 70, left: { value: 60, left: null, right: null }, right: { value: 80, left: null, right: null } },
-  });
+  const [root, setRoot] = useState<TreeNode | null>(JSON.parse(JSON.stringify(initialTree)));
   const [inputValue, setInputValue] = useState("");
   const [highlightValue, setHighlightValue] = useState<number | null>(null);
   const [traversalOrder, setTraversalOrder] = useState<number[]>([]);
@@ -109,6 +111,14 @@ export const TreeVisualizer = () => {
     setTraversalOrder(result);
     setHighlightValue(null);
     toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} traversal complete!`);
+  };
+
+  const resetTree = () => {
+    setRoot(JSON.parse(JSON.stringify(initialTree)));
+    setHighlightValue(null);
+    setTraversalOrder([]);
+    setInputValue("");
+    toast.success("Tree reset to original state!");
   };
 
   const calculatePositions = (
@@ -207,6 +217,10 @@ export const TreeVisualizer = () => {
         <Trash2 className="h-4 w-4 mr-2" />
         Delete
       </Button>
+      <Button onClick={resetTree} variant="outline" size="sm">
+        <RotateCcw className="h-4 w-4 mr-2" />
+        Reset
+      </Button>
       <div className="h-6 w-px bg-border" />
       <Button onClick={() => runTraversal("inorder")} variant="secondary" size="sm">
         Inorder
@@ -226,12 +240,14 @@ export const TreeVisualizer = () => {
       description="A binary search tree where each node has at most two children. Left child < parent < right child."
       controls={controls}
     >
-      <div className="w-full h-full flex flex-col items-center gap-4">
-        <svg width="800" height="400" className="overflow-visible">
-          {renderNode(positionedRoot)}
-        </svg>
+      <div className="w-full h-full flex flex-col items-center gap-4 overflow-auto max-h-[600px]">
+        <div className="min-w-max p-8">
+          <svg width="800" height="600" className="overflow-visible">
+            {renderNode(positionedRoot)}
+          </svg>
+        </div>
         {traversalOrder.length > 0 && (
-          <div className="flex gap-2 items-center">
+          <div className="flex gap-2 items-center flex-wrap justify-center px-4">
             <span className="text-sm font-semibold text-muted-foreground">Order:</span>
             {traversalOrder.map((value, index) => (
               <div
