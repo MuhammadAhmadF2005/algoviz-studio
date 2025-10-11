@@ -115,7 +115,7 @@ queue.shift();
 
       // Parse code to detect variable declarations
       const variableNames = new Set<string>();
-      const varMatches = code.matchAll(/(?:const|let|var)\s+(\w+)\s*=/g);
+      const varMatches = code.matchAll(/(?:const|let|var)\s+(\w+)\s*=\s*\[\]/g);
       for (const match of varMatches) {
         variableNames.add(match[1]);
       }
@@ -126,10 +126,20 @@ queue.shift();
         trackedVars[name] = createTrackedArray(name);
       });
 
-      // Execute the code with tracked variables
+      // Replace variable declarations with assignments to our tracked vars
+      let modifiedCode = code;
+      variableNames.forEach((name) => {
+        // Replace const/let/var name = [] with just a comment (variable already exists as parameter)
+        modifiedCode = modifiedCode.replace(
+          new RegExp(`(?:const|let|var)\\s+${name}\\s*=\\s*\\[\\]`, 'g'),
+          `// ${name} is tracked`
+        );
+      });
+
+      // Execute the modified code with tracked variables
       const executeFunction = new Function(
         ...Object.keys(trackedVars),
-        `${code}\nreturn { ${Array.from(variableNames).join(', ')} };`
+        modifiedCode
       );
 
       executeFunction(...Object.values(trackedVars));
