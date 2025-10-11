@@ -21,6 +21,7 @@ export const LinkedListVisualizer = () => {
   const [inputValue, setInputValue] = useState("");
   const [nextId, setNextId] = useState(4);
   const [highlightId, setHighlightId] = useState<number | null>(null);
+  const [addPosition, setAddPosition] = useState<"end" | "beginning">("end");
 
   const addNode = () => {
     const value = parseInt(inputValue);
@@ -28,10 +29,15 @@ export const LinkedListVisualizer = () => {
       toast.error("Please enter a valid number");
       return;
     }
-    setList([...list, { value, id: nextId }]);
+    if (addPosition === "beginning") {
+      setList([{ value, id: nextId }, ...list]);
+      toast.success("Node added at beginning!");
+    } else {
+      setList([...list, { value, id: nextId }]);
+      toast.success("Node added at end!");
+    }
     setNextId(nextId + 1);
     setInputValue("");
-    toast.success("Node added!");
   };
 
   const deleteNode = (id: number) => {
@@ -73,10 +79,36 @@ export const LinkedListVisualizer = () => {
         className="w-40"
         onKeyPress={(e) => e.key === "Enter" && addNode()}
       />
-      <Button onClick={addNode} size="sm">
-        <Plus className="h-4 w-4 mr-2" />
-        Add Node
-      </Button>
+      <div className="flex gap-2">
+        <Button 
+          onClick={() => { 
+            if (inputValue.trim() === "") {
+              toast.error("Please enter a value first");
+              return;
+            }
+            setAddPosition("beginning"); 
+            addNode(); 
+          }} 
+          size="sm"
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          Add at Beginning
+        </Button>
+        <Button 
+          onClick={() => { 
+            if (inputValue.trim() === "") {
+              toast.error("Please enter a value first");
+              return;
+            }
+            setAddPosition("end"); 
+            addNode(); 
+          }} 
+          size="sm"
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          Add at End
+        </Button>
+      </div>
       <Button onClick={traverseForward} variant="secondary" size="sm">
         <MoveRight className="h-4 w-4 mr-2" />
         Traverse Forward
