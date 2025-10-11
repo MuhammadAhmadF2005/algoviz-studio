@@ -6,6 +6,7 @@ import {
   GitBranch,
   Search,
   ArrowUpDown,
+  Code,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
@@ -22,6 +23,7 @@ const dataStructures = [
 const algorithms = [
   { name: "Search", path: "/search", icon: Search },
   { name: "Sorting", path: "/sorting", icon: ArrowUpDown },
+  { name: "Code Compiler", path: "/compiler", icon: Code },
 ];
 
 export const Sidebar = () => {
