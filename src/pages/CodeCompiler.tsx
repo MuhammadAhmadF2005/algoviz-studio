@@ -2,6 +2,7 @@ import { useState } from "react";
 import { VisualizationContainer } from "@/components/VisualizationContainer";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Play, RotateCcw, Code } from "lucide-react";
 
@@ -19,8 +20,19 @@ interface VisualizationState {
   linkedList?: any[];
 }
 
-export const CodeCompiler = () => {
-  const [code, setCode] = useState(`// Example: Array Operations
+type Language = 'javascript' | 'python' | 'cpp';
+
+interface LanguageConfig {
+  name: string;
+  defaultCode: string;
+  fileExtension: string;
+}
+
+const languageConfigs: Record<Language, LanguageConfig> = {
+  javascript: {
+    name: 'JavaScript',
+    fileExtension: 'js',
+    defaultCode: `// Example: Array Operations
 const arr = [];
 arr.push(10);
 arr.push(20);
@@ -38,126 +50,269 @@ stack.pop();
 const queue = [];
 queue.push(100);
 queue.push(200);
-queue.shift();
-`);
+queue.shift();`
+  },
+  python: {
+    name: 'Python',
+    fileExtension: 'py',
+    defaultCode: `# Example: List Operations
+arr = []
+arr.append(10)
+arr.append(20)
+arr.append(30)
+arr.pop()
+
+# Example: Stack Operations (using list)
+stack = []
+stack.append(1)
+stack.append(2)
+stack.append(3)
+stack.pop()
+
+# Example: Queue Operations (using list)
+queue = []
+queue.append(100)
+queue.append(200)
+queue.pop(0)  # Remove from front`
+  },
+  cpp: {
+    name: 'C++',
+    fileExtension: 'cpp',
+    defaultCode: `// Example: Vector Operations
+#include <vector>
+#include <stack>
+#include <queue>
+
+std::vector<int> arr;
+arr.push_back(10);
+arr.push_back(20);
+arr.push_back(30);
+arr.pop_back();
+
+// Example: Stack Operations
+std::stack<int> stack;
+stack.push(1);
+stack.push(2);
+stack.push(3);
+stack.pop();
+
+// Example: Queue Operations
+std::queue<int> queue;
+queue.push(100);
+queue.push(200);
+queue.pop();`
+  }
+};
+
+export const CodeCompiler = () => {
+  const [language, setLanguage] = useState<Language>('javascript');
+  const [code, setCode] = useState(languageConfigs.javascript.defaultCode);
   const [operations, setOperations] = useState<Operation[]>([]);
   const [currentState, setCurrentState] = useState<VisualizationState>({});
   const [isExecuting, setIsExecuting] = useState(false);
+
+  // Language-specific parsers
+  const parseJavaScript = (code: string): Operation[] => {
+    const operations: Operation[] = [];
+    const lines = code.split('\n');
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (trimmed.startsWith('//') || !trimmed) continue;
+
+      // Match variable.method(value) patterns
+      const pushMatch = trimmed.match(/(\w+)\.push\(([^)]+)\)/);
+      const popMatch = trimmed.match(/(\w+)\.pop\(\)/);
+      const shiftMatch = trimmed.match(/(\w+)\.shift\(\)/);
+      const unshiftMatch = trimmed.match(/(\w+)\.unshift\(([^)]+)\)/);
+
+      if (pushMatch) {
+        operations.push({
+          type: 'push',
+          value: pushMatch[2].replace(/['"]/g, ''),
+          structure: pushMatch[1],
+          timestamp: Date.now()
+        });
+      } else if (popMatch) {
+        operations.push({
+          type: 'pop',
+          structure: popMatch[1],
+          timestamp: Date.now()
+        });
+      } else if (shiftMatch) {
+        operations.push({
+          type: 'shift',
+          structure: shiftMatch[1],
+          timestamp: Date.now()
+        });
+      } else if (unshiftMatch) {
+        operations.push({
+          type: 'unshift',
+          value: unshiftMatch[2].replace(/['"]/g, ''),
+          structure: unshiftMatch[1],
+          timestamp: Date.now()
+        });
+      }
+    }
+
+    return operations;
+  };
+
+  const parsePython = (code: string): Operation[] => {
+    const operations: Operation[] = [];
+    const lines = code.split('\n');
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (trimmed.startsWith('#') || !trimmed) continue;
+
+      // Match variable.method(value) patterns
+      const appendMatch = trimmed.match(/(\w+)\.append\(([^)]+)\)/);
+      const popMatch = trimmed.match(/(\w+)\.pop\((\d*)\)/);
+      const insertMatch = trimmed.match(/(\w+)\.insert\(0,\s*([^)]+)\)/);
+
+      if (appendMatch) {
+        operations.push({
+          type: 'push',
+          value: appendMatch[2].replace(/['"]/g, ''),
+          structure: appendMatch[1],
+          timestamp: Date.now()
+        });
+      } else if (popMatch) {
+        const index = popMatch[2];
+        operations.push({
+          type: index === '0' ? 'shift' : 'pop',
+          structure: popMatch[1],
+          timestamp: Date.now()
+        });
+      } else if (insertMatch) {
+        operations.push({
+          type: 'unshift',
+          value: insertMatch[2].replace(/['"]/g, ''),
+          structure: insertMatch[1],
+          timestamp: Date.now()
+        });
+      }
+    }
+
+    return operations;
+  };
+
+  const parseCpp = (code: string): Operation[] => {
+    const operations: Operation[] = [];
+    const lines = code.split('\n');
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (trimmed.startsWith('//') || trimmed.startsWith('#') || !trimmed) continue;
+
+      // Match variable.method(value) patterns
+      const pushBackMatch = trimmed.match(/(\w+)\.push_back\(([^)]+)\)/);
+      const popBackMatch = trimmed.match(/(\w+)\.pop_back\(\)/);
+      const stackPushMatch = trimmed.match(/(\w+)\.push\(([^)]+)\)/);
+      const stackPopMatch = trimmed.match(/(\w+)\.pop\(\)/);
+
+      if (pushBackMatch) {
+        operations.push({
+          type: 'push',
+          value: pushBackMatch[2],
+          structure: pushBackMatch[1],
+          timestamp: Date.now()
+        });
+      } else if (popBackMatch) {
+        operations.push({
+          type: 'pop',
+          structure: popBackMatch[1],
+          timestamp: Date.now()
+        });
+      } else if (stackPushMatch && (trimmed.includes('stack') || trimmed.includes('queue'))) {
+        operations.push({
+          type: 'push',
+          value: stackPushMatch[2],
+          structure: stackPushMatch[1],
+          timestamp: Date.now()
+        });
+      } else if (stackPopMatch && trimmed.includes('stack')) {
+        operations.push({
+          type: 'pop',
+          structure: stackPopMatch[1],
+          timestamp: Date.now()
+        });
+      } else if (stackPopMatch && trimmed.includes('queue')) {
+        operations.push({
+          type: 'shift',
+          structure: stackPopMatch[1],
+          timestamp: Date.now()
+        });
+      }
+    }
+
+    return operations;
+  };
 
   const executeCode = async () => {
     setIsExecuting(true);
     setOperations([]);
     setCurrentState({});
 
-    const trackedOps: Operation[] = [];
-    const state: VisualizationState = {};
-
     try {
-      // Create a sandboxed execution environment
-      const createTrackedArray = (name: string) => {
-        const arr: any[] = [];
-        state[name as keyof VisualizationState] = arr;
+      let parsedOps: Operation[] = [];
 
-        return new Proxy(arr, {
-          get(target, prop) {
-            if (prop === 'push') {
-              return (...args: any[]) => {
-                const result = Array.prototype.push.apply(target, args);
-                trackedOps.push({
-                  type: 'push',
-                  value: args[0],
-                  structure: name,
-                  timestamp: Date.now(),
-                });
-                return result;
-              };
-            }
-            if (prop === 'pop') {
-              return () => {
-                const value = Array.prototype.pop.apply(target);
-                trackedOps.push({
-                  type: 'pop',
-                  value,
-                  structure: name,
-                  timestamp: Date.now(),
-                });
-                return value;
-              };
-            }
-            if (prop === 'shift') {
-              return () => {
-                const value = Array.prototype.shift.apply(target);
-                trackedOps.push({
-                  type: 'shift',
-                  value,
-                  structure: name,
-                  timestamp: Date.now(),
-                });
-                return value;
-              };
-            }
-            if (prop === 'unshift') {
-              return (...args: any[]) => {
-                const result = Array.prototype.unshift.apply(target, args);
-                trackedOps.push({
-                  type: 'unshift',
-                  value: args[0],
-                  structure: name,
-                  timestamp: Date.now(),
-                });
-                return result;
-              };
-            }
-            return Reflect.get(target, prop);
-          },
-        });
-      };
-
-      // Parse code to detect variable declarations
-      const variableNames = new Set<string>();
-      const varMatches = code.matchAll(/(?:const|let|var)\s+(\w+)\s*=\s*\[\]/g);
-      for (const match of varMatches) {
-        variableNames.add(match[1]);
+      // Parse operations based on selected language
+      switch (language) {
+        case 'javascript':
+          parsedOps = parseJavaScript(code);
+          break;
+        case 'python':
+          parsedOps = parsePython(code);
+          break;
+        case 'cpp':
+          parsedOps = parseCpp(code);
+          break;
       }
 
-      // Create tracked arrays for detected variables
-      const trackedVars: Record<string, any> = {};
-      variableNames.forEach((name) => {
-        trackedVars[name] = createTrackedArray(name);
+      if (parsedOps.length === 0) {
+        toast.error("No valid operations found in the code!");
+        return;
+      }
+
+      // Simulate execution by applying operations to data structures
+      const state: VisualizationState = {};
+
+      // Initialize data structures mentioned in operations
+      const structures = new Set(parsedOps.map(op => op.structure));
+      structures.forEach(name => {
+        state[name as keyof VisualizationState] = [];
       });
-
-      // Replace variable declarations with assignments to our tracked vars
-      let modifiedCode = code;
-      variableNames.forEach((name) => {
-        // Replace const/let/var name = [] with just a comment (variable already exists as parameter)
-        modifiedCode = modifiedCode.replace(
-          new RegExp(`(?:const|let|var)\\s+${name}\\s*=\\s*\\[\\]`, 'g'),
-          `// ${name} is tracked`
-        );
-      });
-
-      // Execute the modified code with tracked variables
-      const executeFunction = new Function(
-        ...Object.keys(trackedVars),
-        modifiedCode
-      );
-
-      executeFunction(...Object.values(trackedVars));
 
       // Animate operations
-      for (let i = 0; i < trackedOps.length; i++) {
+      for (let i = 0; i < parsedOps.length; i++) {
         await new Promise((resolve) => setTimeout(resolve, 500));
-        setOperations(trackedOps.slice(0, i + 1));
-        
-        // Update current state for visualization
-        const currentOp = trackedOps[i];
-        setCurrentState((prev) => ({
-          ...prev,
-          [currentOp.structure]: [...(state[currentOp.structure as keyof VisualizationState] || [])],
-        }));
+
+        const op = parsedOps[i];
+        const structure = state[op.structure as keyof VisualizationState] as any[];
+
+        // Apply operation to the data structure
+        switch (op.type) {
+          case 'push':
+            structure.push(op.value);
+            break;
+          case 'pop':
+            structure.pop();
+            break;
+          case 'shift':
+            structure.shift();
+            break;
+          case 'unshift':
+            structure.unshift(op.value);
+            break;
+        }
+
+        setOperations(parsedOps.slice(0, i + 1));
+        setCurrentState({ ...state });
       }
 
-      toast.success(`Executed ${trackedOps.length} operations!`);
+      toast.success(`Executed ${parsedOps.length} operations!`);
     } catch (error) {
       console.error("Execution error:", error);
       toast.error(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -166,27 +321,15 @@ queue.shift();
     }
   };
 
+  const handleLanguageChange = (newLanguage: Language) => {
+    setLanguage(newLanguage);
+    setCode(languageConfigs[newLanguage].defaultCode);
+    setOperations([]);
+    setCurrentState({});
+  };
+
   const resetCode = () => {
-    setCode(`// Example: Array Operations
-const arr = [];
-arr.push(10);
-arr.push(20);
-arr.push(30);
-arr.pop();
-
-// Example: Stack Operations
-const stack = [];
-stack.push(1);
-stack.push(2);
-stack.push(3);
-stack.pop();
-
-// Example: Queue Operations
-const queue = [];
-queue.push(100);
-queue.push(200);
-queue.shift();
-`);
+    setCode(languageConfigs[language].defaultCode);
     setOperations([]);
     setCurrentState({});
     toast.success("Code reset to example!");
@@ -194,6 +337,18 @@ queue.shift();
 
   const controls = (
     <>
+      <div className="flex items-center gap-2">
+        <Select value={language} onValueChange={handleLanguageChange}>
+          <SelectTrigger className="w-32">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="javascript">JavaScript</SelectItem>
+            <SelectItem value="python">Python</SelectItem>
+            <SelectItem value="cpp">C++</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
       <Button onClick={executeCode} disabled={isExecuting} size="sm">
         <Play className="h-4 w-4 mr-2" />
         Execute Code
@@ -207,8 +362,8 @@ queue.shift();
 
   return (
     <VisualizationContainer
-      title="JavaScript Code Compiler"
-      description="Write JavaScript code using arrays, stacks, and queues. Operations will be visualized step-by-step."
+      title={`${languageConfigs[language].name} Code Compiler`}
+      description={`Write ${languageConfigs[language].name} code using arrays, stacks, and queues. Operations will be visualized step-by-step.`}
       controls={controls}
     >
       <div className="w-full space-y-6">
@@ -216,13 +371,13 @@ queue.shift();
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-sm font-medium text-foreground">
             <Code className="h-4 w-4" />
-            Code Editor
+            Code Editor ({languageConfigs[language].name})
           </div>
           <Textarea
             value={code}
             onChange={(e) => setCode(e.target.value)}
             className="font-mono text-sm min-h-[300px] bg-muted/50"
-            placeholder="Write your JavaScript code here..."
+            placeholder={`Write your ${languageConfigs[language].name} code here...`}
             disabled={isExecuting}
           />
         </div>
