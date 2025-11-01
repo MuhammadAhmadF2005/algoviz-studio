@@ -3,8 +3,16 @@ import { VisualizationContainer } from "@/components/VisualizationContainer";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Chatbot } from "@/components/Chatbot";
 import { toast } from "sonner";
-import { Play, RotateCcw, Code } from "lucide-react";
+import { Play, RotateCcw, Code, Bot } from "lucide-react";
 
 interface Operation {
   type: string;
@@ -110,6 +118,7 @@ export const CodeCompiler = () => {
   const [operations, setOperations] = useState<Operation[]>([]);
   const [currentState, setCurrentState] = useState<VisualizationState>({});
   const [isExecuting, setIsExecuting] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false);
 
   // Language-specific parsers
   const parseJavaScript = (code: string): Operation[] => {
@@ -357,6 +366,20 @@ export const CodeCompiler = () => {
         <RotateCcw className="h-4 w-4 mr-2" />
         Reset to Example
       </Button>
+      <Dialog open={isChatOpen} onOpenChange={setIsChatOpen}>
+        <DialogTrigger asChild>
+          <Button variant="outline" size="sm">
+            <Bot className="h-4 w-4 mr-2" />
+            AI Assistant
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="max-w-2xl h-3/4 flex flex-col">
+          <DialogHeader>
+            <DialogTitle>AI Assistant</DialogTitle>
+          </DialogHeader>
+          <Chatbot />
+        </DialogContent>
+      </Dialog>
     </>
   );
 
