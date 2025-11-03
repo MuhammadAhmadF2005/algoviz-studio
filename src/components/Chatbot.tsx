@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import Fuse from "fuse.js";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -40,6 +41,20 @@ export const Chatbot = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [chatState, setChatState] = useState<ChatState>("idle");
+  const [isLoading, setIsLoading] = useState(false);
+
+  const apiKey =
+    (import.meta as any).env?.VITE_GOOGLE_API_KEY ||
+    (import.meta as any).env?.VITE_GEMINI_API_KEY ||
+    "";
+
+  const genAI = useMemo(() => {
+    try {
+      return apiKey ? new GoogleGenerativeAI(apiKey) : null;
+    } catch {
+      return null;
+    }
+  }, [apiKey]);
 
   const analyzeCode = (code: string): string => {
     // Simple checks for common errors
@@ -53,7 +68,42 @@ export const Chatbot = () => {
     return "I've analyzed your code and I don't see any obvious errors. If you're still having trouble, I recommend checking the browser's console for more detailed error messages.";
   };
 
-  const handleSendMessage = () => {
+  const askGemini = async (prompt: string): Promise<string> => {
+    if (!genAI) return "AI is not configured. Please set VITE_GOOGLE_API_KEY.";
+
+    try {
+      const candidateModels = [
+        "gemini-1.5-pro",
+        "gemini-1.5-flash"
+      ];
+
+      let lastError: any = null;
+
+      for (const modelName of candidateModels) {
+        try {
+          // use stable "v1" API automatically via updated SDK
+          const model = genAI.getGenerativeModel({ model: modelName });
+
+          const result = await model.generateContent(prompt);
+          const response = await result.response;
+          const text = response.text();
+
+          if (text) return text;
+        } catch (e) {
+          lastError = e;
+          continue;
+        }
+      }
+
+      throw lastError || new Error("All candidate models failed");
+    } catch (err: any) {
+      // handle both structured Gemini errors and generic fetch failures
+      return `AI request failed: ${err?.message || "Unknown error"}`;
+    }
+  };
+
+
+  const handleSendMessage = async () => {
     if (input.trim() === "") return;
 
     const newMessages: Message[] = [...messages, { text: input, sender: "user" }];
@@ -80,14 +130,22 @@ export const Chatbot = () => {
       return;
     }
 
-    const results = fuse.search(input);
-    const botResponse = results.length > 0 && results[0].score! < 0.5
-      ? results[0].item.answer
-      : "I'm sorry, I don't understand. Can you please rephrase your question? Type 'help' to see what I can do.";
+    // If Gemini API key is present, use it; otherwise fallback to local FAQ
+    if (genAI) {
+      setIsLoading(true);
+      const reply = await askGemini(input);
+      setIsLoading(false);
+      setMessages([...newMessages, { text: reply, sender: "bot" }]);
+      return;
+    }
 
-    setTimeout(() => {
-      setMessages([...newMessages, { text: botResponse, sender: "bot" }]);
-    }, 500);
+    const results = fuse.search(input);
+    const botResponse =
+      results.length > 0 && results[0].score! < 0.5
+        ? results[0].item.answer
+        : "I'm sorry, I don't understand. Can you please rephrase your question? Type 'help' to see what I can do.";
+
+    setMessages([...newMessages, { text: botResponse, sender: "bot" }]);
   };
 
   return (
@@ -97,16 +155,14 @@ export const Chatbot = () => {
           {messages.map((message, index) => (
             <div
               key={index}
-              className={`flex ${
-                message.sender === "user" ? "justify-end" : "justify-start"
-              }`}
+              className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"
+                }`}
             >
               <div
-                className={`p-2 rounded-lg max-w-xs ${
-                  message.sender === "user"
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted"
-                }`}
+                className={`p-2 rounded-lg max-w-xs ${message.sender === "user"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted"
+                  }`}
               >
                 {message.text}
               </div>
@@ -119,10 +175,10 @@ export const Chatbot = () => {
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
+            onKeyDown={(e) => e.key === "Enter" && !isLoading && handleSendMessage()}
             placeholder={chatState === "awaiting_code" ? "Paste your code here..." : "Type your message..."}
           />
-          <Button onClick={handleSendMessage}>
+          <Button onClick={handleSendMessage} disabled={isLoading}>
             <Send className="h-4 w-4" />
           </Button>
         </div>
