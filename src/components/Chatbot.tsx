@@ -76,7 +76,7 @@ export const Chatbot = () => {
             placeholder="Type your message..."
             disabled={isLoading}
           />
-          <Button onClick={handleSendMessage} disabled={isLoading}>
+          <Button onClick={handleSendMessage} disabled={isLoading} data-testid="send-button">
             <Send className="h-4 w-4" />
           </Button>
         </div>
