@@ -7,9 +7,19 @@ import {
   Search,
   ArrowUpDown,
   Code,
+  Bot,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@/components/ui/drawer";
+import { Chatbot } from "@/components/Chatbot";
 import datavizLogo from "@/assets/dataviz-logo.png";
 
 const dataStructures = [
@@ -103,6 +113,23 @@ export const Sidebar = () => {
           Interactive visualizations to help you understand data structures and algorithms
         </p>
       </div>
+
+      <Drawer>
+        <DrawerTrigger asChild>
+          <Button variant="ghost" className="w-full justify-start gap-3 px-3">
+            <Bot className="h-4 w-4" />
+            <span className="text-sm font-medium">Ask AI</span>
+          </Button>
+        </DrawerTrigger>
+        <DrawerContent className="h-[80vh] w-full max-w-2xl mx-auto">
+          <DrawerHeader>
+            <DrawerTitle>Gemini Chatbot</DrawerTitle>
+          </DrawerHeader>
+          <div className="overflow-auto">
+            <Chatbot />
+          </div>
+        </DrawerContent>
+      </Drawer>
     </aside>
   );
 };
