@@ -1,22 +1,38 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { systemPrompt } from "./dsa-knowledge";
 
 const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
 
 if (!apiKey) {
-  throw new Error("VITE_GEMINI_API_KEY is not defined");
+  console.warn("VITE_GEMINI_API_KEY is not defined - AI features will be limited");
 }
 
-const genAI = new GoogleGenerativeAI(apiKey);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
+const model = genAI?.getGenerativeModel({ 
+  model: "gemini-1.5-flash",
+  systemInstruction: systemPrompt,
+});
 
-export const sendMessageToAI = async (message: string) => {
+export const sendMessageToAI = async (message: string): Promise<string> => {
+  if (!model) {
+    return "AI assistant is not configured. Please add your Gemini API key.";
+  }
+
   try {
-    const result = await model.generateContent(message);
+    const chat = model.startChat({
+      generationConfig: {
+        temperature: 0.7,
+        topK: 40,
+        topP: 0.95,
+        maxOutputTokens: 1024,
+      },
+    });
+
+    const result = await chat.sendMessage(message);
     const response = await result.response;
-    const text = response.text();
-    return text;
+    return response.text();
   } catch (error) {
     console.error("Error sending message to AI:", error);
-    return "An error occurred while communicating with the AI. Please try again later.";
+    return "Sorry, I encountered an error. Please try again.";
   }
 };
