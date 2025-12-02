@@ -7,9 +7,18 @@ import {
   Search,
   ArrowUpDown,
   Code,
+  Bot,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@/components/ui/drawer";
+import { Chatbot } from "@/components/Chatbot";
 import datavizLogo from "@/assets/dataviz-logo.png";
 
 const dataStructures = [
@@ -32,19 +41,19 @@ export const Sidebar = () => {
   const isActive = (path: string) => location.pathname === path;
 
   return (
-    <aside className="w-64 border-r bg-card p-6 flex flex-col gap-6">
-      <div className="space-y-2">
+    <aside className="w-64 border-r bg-card flex flex-col h-screen sticky top-0">
+      {/* Logo Section */}
+      <div className="p-5 border-b">
         <Link to="/" className="block">
-          <img src={datavizLogo} alt="DataViz Logo" className="h-16 w-auto mb-2" />
-          <p className="text-sm text-muted-foreground">Algorithm Visualizer</p>
+          <img src={datavizLogo} alt="DataViz Logo" className="h-14 w-auto" />
+          <p className="text-xs text-muted-foreground mt-1.5">Algorithm Visualizer</p>
         </Link>
       </div>
 
-      <Separator />
-
-      <nav className="flex-1 space-y-6">
+      {/* Navigation */}
+      <nav className="flex-1 overflow-y-auto p-4 space-y-6">
         <div className="space-y-2">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-3">
             Data Structures
           </h2>
           <ul className="space-y-1">
@@ -55,9 +64,9 @@ export const Sidebar = () => {
                   <Link
                     to={item.path}
                     className={cn(
-                      "flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200",
+                      "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200",
                       isActive(item.path)
-                        ? "bg-accent text-accent-foreground shadow-md"
+                        ? "bg-primary text-primary-foreground shadow-sm"
                         : "text-foreground hover:bg-secondary"
                     )}
                   >
@@ -71,7 +80,7 @@ export const Sidebar = () => {
         </div>
 
         <div className="space-y-2">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-3">
             Algorithms
           </h2>
           <ul className="space-y-1">
@@ -82,9 +91,9 @@ export const Sidebar = () => {
                   <Link
                     to={item.path}
                     className={cn(
-                      "flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200",
+                      "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200",
                       isActive(item.path)
-                        ? "bg-accent text-accent-foreground shadow-md"
+                        ? "bg-primary text-primary-foreground shadow-sm"
                         : "text-foreground hover:bg-secondary"
                     )}
                   >
@@ -98,10 +107,33 @@ export const Sidebar = () => {
         </div>
       </nav>
 
-      <div className="p-4 rounded-lg bg-secondary/50 border border-border">
-        <p className="text-xs text-muted-foreground">
-          Interactive visualizations to help you understand data structures and algorithms
-        </p>
+      {/* Footer Section */}
+      <div className="p-4 border-t space-y-3">
+        <div className="p-3 rounded-lg bg-secondary/50 border border-border">
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Interactive visualizations to help you understand DSA concepts
+          </p>
+        </div>
+
+        <Drawer>
+          <DrawerTrigger asChild>
+            <Button variant="default" className="w-full gap-2">
+              <Bot className="h-4 w-4" />
+              <span className="text-sm font-medium">Ask AI Assistant</span>
+            </Button>
+          </DrawerTrigger>
+          <DrawerContent className="h-[85vh] max-h-[85vh]">
+            <DrawerHeader className="border-b pb-4">
+              <DrawerTitle className="flex items-center gap-2">
+                <Bot className="h-5 w-5 text-accent" />
+                DSA AI Assistant
+              </DrawerTitle>
+            </DrawerHeader>
+            <div className="flex-1 overflow-hidden">
+              <Chatbot />
+            </div>
+          </DrawerContent>
+        </Drawer>
       </div>
     </aside>
   );
