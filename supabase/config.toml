@@ -1,1 +1,4 @@
 project_id = "wgfhctmzfamaleonnvzo"
+
+[functions.dsa-chat]
+verify_jwt = false
