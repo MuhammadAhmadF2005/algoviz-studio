@@ -1,36 +1,21 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
-import { systemPrompt } from "./dsa-knowledge";
-
-const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-
-if (!apiKey) {
-  console.warn("VITE_GEMINI_API_KEY is not defined - AI features will be limited");
-}
-
-const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
-const model = genAI?.getGenerativeModel({ 
-  model: "gemini-2.0-flash",
-  systemInstruction: systemPrompt,
-});
+import { supabase } from "@/integrations/supabase/client";
 
 export const sendMessageToAI = async (message: string): Promise<string> => {
-  if (!model) {
-    return "AI assistant is not configured. Please add your Gemini API key.";
-  }
-
   try {
-    const chat = model.startChat({
-      generationConfig: {
-        temperature: 0.7,
-        topK: 40,
-        topP: 0.95,
-        maxOutputTokens: 1024,
-      },
+    const { data, error } = await supabase.functions.invoke('dsa-chat', {
+      body: { message }
     });
 
-    const result = await chat.sendMessage(message);
-    const response = await result.response;
-    return response.text();
+    if (error) {
+      console.error("Edge function error:", error);
+      throw error;
+    }
+
+    if (data?.error) {
+      return data.error;
+    }
+
+    return data?.response || "I couldn't generate a response. Please try again.";
   } catch (error) {
     console.error("Error sending message to AI:", error);
     return "Sorry, I encountered an error. Please try again.";
