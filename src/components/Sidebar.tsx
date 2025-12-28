@@ -27,6 +27,7 @@ const dataStructures = [
   { name: "Queue", path: "/queue", icon: List },
   { name: "Linked List", path: "/linked-list", icon: GitBranch },
   { name: "Binary Tree", path: "/tree", icon: GitBranch },
+  { name: "AVL Tree", path: "/avl-tree", icon: GitBranch },
 ];
 
 const algorithms = [
