@@ -11,6 +11,7 @@ import { StackVisualizer } from "./pages/StackVisualizer";
 import { QueueVisualizer } from "./pages/QueueVisualizer";
 import { LinkedListVisualizer } from "./pages/LinkedListVisualizer";
 import { TreeVisualizer } from "./pages/TreeVisualizer";
+import { AVLTreeVisualizer } from "./pages/AVLTreeVisualizer";
 import { SearchVisualizer } from "./pages/SearchVisualizer";
 import { SortingVisualizer } from "./pages/SortingVisualizer";
 import { CodeCompiler } from "./pages/CodeCompiler";
@@ -33,6 +34,7 @@ const App = () => (
               <Route path="/queue" element={<QueueVisualizer />} />
               <Route path="/linked-list" element={<LinkedListVisualizer />} />
               <Route path="/tree" element={<TreeVisualizer />} />
+              <Route path="/avl-tree" element={<AVLTreeVisualizer />} />
               <Route path="/search" element={<SearchVisualizer />} />
               <Route path="/sorting" element={<SortingVisualizer />} />
               <Route path="/compiler" element={<CodeCompiler />} />
