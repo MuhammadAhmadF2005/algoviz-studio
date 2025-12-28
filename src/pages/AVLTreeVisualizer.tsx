@@ -276,11 +276,11 @@ export const AVLTreeVisualizer = () => {
   const positionedRoot = calculatePositions(root, 400, 50, 150);
 
   const getNodeColor = (node: AVLNode): string => {
-    if (rotatingNode === node.value) return "hsl(var(--chart-4))"; // Yellow - rotating
-    if (highlightedNode === node.value) return "hsl(var(--destructive))"; // Red - imbalanced
+    if (rotatingNode === node.value) return "#eab308"; // Yellow - rotating
+    if (highlightedNode === node.value) return "#ef4444"; // Red - imbalanced
     const bf = node.balanceFactor ?? 0;
-    if (Math.abs(bf) > 1) return "hsl(var(--destructive))"; // Red - imbalanced
-    return "hsl(var(--chart-2))"; // Green - balanced
+    if (Math.abs(bf) > 1) return "#ef4444"; // Red - imbalanced
+    return "#22c55e"; // Green - balanced
   };
 
   const renderNode = (node: AVLNode | null): JSX.Element | null => {
@@ -321,7 +321,8 @@ export const AVLTreeVisualizer = () => {
           x={node.x}
           y={node.y + 5}
           textAnchor="middle"
-          className="fill-primary-foreground font-semibold text-sm"
+          fill="white"
+          className="font-semibold text-sm"
         >
           {node.value}
         </text>
@@ -366,8 +367,7 @@ export const AVLTreeVisualizer = () => {
         <Button 
           onClick={balanceTree} 
           disabled={isBalancing || !root}
-          variant="default"
-          className="bg-chart-2 hover:bg-chart-2/90"
+          className="bg-emerald-600 hover:bg-emerald-700 text-white"
         >
           {isBalancing ? "Balancing..." : "Balance Tree"}
         </Button>
@@ -392,15 +392,15 @@ export const AVLTreeVisualizer = () => {
       </div>
       <div className="flex gap-4 text-xs">
         <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded-full bg-chart-2"></div>
+          <div className="w-3 h-3 rounded-full bg-emerald-500"></div>
           <span className="text-muted-foreground">Balanced</span>
         </div>
         <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded-full bg-destructive"></div>
+          <div className="w-3 h-3 rounded-full bg-red-500"></div>
           <span className="text-muted-foreground">Imbalanced</span>
         </div>
         <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded-full bg-chart-4"></div>
+          <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
           <span className="text-muted-foreground">Rotating</span>
         </div>
       </div>
