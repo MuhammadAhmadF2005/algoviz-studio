@@ -1,10 +1,11 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { VisualizationContainer } from "@/components/VisualizationContainer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { Pause, Play, RotateCcw } from "lucide-react";
 
 interface AVLNode {
   value: number;
@@ -20,6 +21,7 @@ interface BalanceStep {
   type: 'LL' | 'RR' | 'LR' | 'RL';
   pivotValue: number;
   description: string;
+  detailedExplanation: string;
   treeBefore: AVLNode | null;
   treeAfter: AVLNode | null;
 }
@@ -81,7 +83,7 @@ const insertNodeUnbalanced = (node: AVLNode | null, value: number): AVLNode => {
   } else if (value > node.value) {
     node.right = insertNodeUnbalanced(node.right, value);
   } else {
-    return node; // Duplicate values not allowed
+    return node;
   }
 
   updateHeight(node);
@@ -92,11 +94,33 @@ export const AVLTreeVisualizer = () => {
   const [root, setRoot] = useState<AVLNode | null>(null);
   const [inputValue, setInputValue] = useState("");
   const [isBalancing, setIsBalancing] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const [currentStep, setCurrentStep] = useState<BalanceStep | null>(null);
+  const [stepPhase, setStepPhase] = useState<'detecting' | 'rotating' | 'complete' | null>(null);
   const [highlightedNode, setHighlightedNode] = useState<number | null>(null);
   const [rotatingNode, setRotatingNode] = useState<number | null>(null);
-  const [speed, setSpeed] = useState([500]);
+  const [speed, setSpeed] = useState([1500]);
+  const [stepCount, setStepCount] = useState(0);
+  const pauseRef = useRef(false);
   const { toast } = useToast();
+
+  const waitWithPause = async (ms: number) => {
+    const interval = 50;
+    let elapsed = 0;
+    while (elapsed < ms) {
+      if (pauseRef.current) {
+        await new Promise((resolve) => setTimeout(resolve, interval));
+        continue;
+      }
+      await new Promise((resolve) => setTimeout(resolve, interval));
+      elapsed += interval;
+    }
+  };
+
+  const togglePause = () => {
+    pauseRef.current = !pauseRef.current;
+    setIsPaused(!isPaused);
+  };
 
   const addNode = () => {
     const value = parseInt(inputValue);
@@ -113,19 +137,21 @@ export const AVLTreeVisualizer = () => {
     setCurrentStep(null);
     setHighlightedNode(null);
     setRotatingNode(null);
+    setStepPhase(null);
+    setStepCount(0);
+    pauseRef.current = false;
+    setIsPaused(false);
   };
 
   const findImbalancedNode = (node: AVLNode | null): { node: AVLNode; parent: AVLNode | null; isLeft: boolean } | null => {
     if (!node) return null;
 
-    // Check children first (bottom-up approach)
     const leftResult = findImbalancedNode(node.left);
     if (leftResult) return leftResult;
 
     const rightResult = findImbalancedNode(node.right);
     if (rightResult) return rightResult;
 
-    // Check current node
     const bf = getBalanceFactor(node);
     if (Math.abs(bf) > 1) {
       return { node, parent: null, isLeft: false };
@@ -134,33 +160,47 @@ export const AVLTreeVisualizer = () => {
     return null;
   };
 
+  const getRotationExplanation = (type: 'LL' | 'RR' | 'LR' | 'RL', nodeValue: number, bf: number, childBf: number): string => {
+    switch (type) {
+      case 'LL':
+        return `Node ${nodeValue} has balance factor ${bf} (left-heavy). Its left child has BF ≥ 0, indicating a Left-Left imbalance. Solution: Perform a single RIGHT rotation. The left child becomes the new root of this subtree, the original node becomes its right child.`;
+      case 'RR':
+        return `Node ${nodeValue} has balance factor ${bf} (right-heavy). Its right child has BF ≤ 0, indicating a Right-Right imbalance. Solution: Perform a single LEFT rotation. The right child becomes the new root of this subtree, the original node becomes its left child.`;
+      case 'LR':
+        return `Node ${nodeValue} has balance factor ${bf} (left-heavy). Its left child has BF < 0 (right-heavy), indicating a Left-Right imbalance. Solution: First perform LEFT rotation on the left child, then RIGHT rotation on this node. This is a double rotation.`;
+      case 'RL':
+        return `Node ${nodeValue} has balance factor ${bf} (right-heavy). Its right child has BF > 0 (left-heavy), indicating a Right-Left imbalance. Solution: First perform RIGHT rotation on the right child, then LEFT rotation on this node. This is a double rotation.`;
+    }
+  };
+
   const balanceNode = (node: AVLNode): { balanced: AVLNode; step: BalanceStep } => {
     const bf = getBalanceFactor(node);
     const treeBefore = cloneTree(node);
     let treeAfter: AVLNode;
     let stepType: 'LL' | 'RR' | 'LR' | 'RL';
     let description: string;
+    let childBf: number;
 
     if (bf > 1 && getBalanceFactor(node.left) >= 0) {
-      // LL Case - Right rotation
       stepType = 'LL';
-      description = `Left-Left case: Performing right rotation at node ${node.value}`;
+      childBf = getBalanceFactor(node.left);
+      description = `Left-Left Case: Right rotation at node ${node.value}`;
       treeAfter = rightRotate(node);
     } else if (bf > 1 && getBalanceFactor(node.left) < 0) {
-      // LR Case - Left rotation on left child, then right rotation
       stepType = 'LR';
-      description = `Left-Right case: Left rotation at ${node.left!.value}, then right rotation at ${node.value}`;
+      childBf = getBalanceFactor(node.left);
+      description = `Left-Right Case: Left rotation at ${node.left!.value}, then right rotation at ${node.value}`;
       node.left = leftRotate(node.left!);
       treeAfter = rightRotate(node);
     } else if (bf < -1 && getBalanceFactor(node.right) <= 0) {
-      // RR Case - Left rotation
       stepType = 'RR';
-      description = `Right-Right case: Performing left rotation at node ${node.value}`;
+      childBf = getBalanceFactor(node.right);
+      description = `Right-Right Case: Left rotation at node ${node.value}`;
       treeAfter = leftRotate(node);
     } else {
-      // RL Case - Right rotation on right child, then left rotation
       stepType = 'RL';
-      description = `Right-Left case: Right rotation at ${node.right!.value}, then left rotation at ${node.value}`;
+      childBf = getBalanceFactor(node.right);
+      description = `Right-Left Case: Right rotation at ${node.right!.value}, then left rotation at ${node.value}`;
       node.right = rightRotate(node.right!);
       treeAfter = leftRotate(node);
     }
@@ -171,28 +211,12 @@ export const AVLTreeVisualizer = () => {
         type: stepType,
         pivotValue: node.value,
         description,
+        detailedExplanation: getRotationExplanation(stepType, node.value, bf, childBf),
         treeBefore,
         treeAfter: cloneTree(treeAfter),
       },
     };
   };
-
-  const balanceTreeStep = useCallback((currentRoot: AVLNode | null): AVLNode | null => {
-    if (!currentRoot) return null;
-
-    // Balance children first
-    currentRoot.left = balanceTreeStep(currentRoot.left);
-    currentRoot.right = balanceTreeStep(currentRoot.right);
-    updateHeight(currentRoot);
-
-    const bf = getBalanceFactor(currentRoot);
-    if (Math.abs(bf) > 1) {
-      const { balanced } = balanceNode(currentRoot);
-      return balanced;
-    }
-
-    return currentRoot;
-  }, []);
 
   const balanceTree = async () => {
     if (!root) {
@@ -201,6 +225,10 @@ export const AVLTreeVisualizer = () => {
     }
 
     setIsBalancing(true);
+    setStepCount(0);
+    pauseRef.current = false;
+    setIsPaused(false);
+    
     let currentRoot = cloneTree(root);
     let hasImbalance = true;
     let iterations = 0;
@@ -215,15 +243,28 @@ export const AVLTreeVisualizer = () => {
         break;
       }
 
-      // Highlight the imbalanced node
-      setHighlightedNode(imbalanced.node.value);
-      await new Promise((resolve) => setTimeout(resolve, speed[0]));
+      setStepCount((prev) => prev + 1);
 
-      // Show rotation
+      // Phase 1: Detecting imbalance
+      setStepPhase('detecting');
+      setHighlightedNode(imbalanced.node.value);
+      const bf = getBalanceFactor(imbalanced.node);
+      setCurrentStep({
+        type: 'LL',
+        pivotValue: imbalanced.node.value,
+        description: `Detected imbalance at node ${imbalanced.node.value}`,
+        detailedExplanation: `Node ${imbalanced.node.value} has a balance factor of ${bf}. A balanced AVL node must have BF between -1 and 1. Since |${bf}| > 1, this node needs rebalancing. Analyzing the structure to determine rotation type...`,
+        treeBefore: null,
+        treeAfter: null,
+      });
+      await waitWithPause(speed[0]);
+
+      // Phase 2: Performing rotation
+      setStepPhase('rotating');
       setRotatingNode(imbalanced.node.value);
       const { balanced, step } = balanceNode(cloneTree(imbalanced.node)!);
       setCurrentStep(step);
-      await new Promise((resolve) => setTimeout(resolve, speed[0]));
+      await waitWithPause(speed[0] * 1.5);
 
       // Apply the balance to the tree
       const applyBalance = (node: AVLNode | null, targetValue: number, newSubtree: AVLNode): AVLNode | null => {
@@ -246,15 +287,25 @@ export const AVLTreeVisualizer = () => {
         currentRoot = applyBalance(currentRoot, imbalanced.node.value, balanced);
       }
 
+      // Phase 3: Show result
+      setStepPhase('complete');
       setRoot(cloneTree(currentRoot));
       setRotatingNode(null);
       setHighlightedNode(null);
-      await new Promise((resolve) => setTimeout(resolve, speed[0] / 2));
+      setCurrentStep({
+        ...step,
+        description: `Rotation complete! Subtree is now balanced.`,
+        detailedExplanation: `The ${step.type} rotation was successful. The new subtree root is ${balanced.value}. All nodes in this subtree now have balance factors between -1 and 1. Checking for more imbalances...`,
+      });
+      await waitWithPause(speed[0]);
     }
 
     setCurrentStep(null);
+    setStepPhase(null);
     setIsBalancing(false);
-    toast({ title: "Tree Balanced!", description: "AVL tree is now balanced" });
+    pauseRef.current = false;
+    setIsPaused(false);
+    toast({ title: "Tree Balanced!", description: `Completed in ${iterations - 1} rotation(s)` });
   };
 
   const calculatePositions = (
@@ -276,11 +327,11 @@ export const AVLTreeVisualizer = () => {
   const positionedRoot = calculatePositions(root, 400, 50, 150);
 
   const getNodeColor = (node: AVLNode): string => {
-    if (rotatingNode === node.value) return "#eab308"; // Yellow - rotating
-    if (highlightedNode === node.value) return "#ef4444"; // Red - imbalanced
+    if (rotatingNode === node.value) return "#eab308";
+    if (highlightedNode === node.value) return "#ef4444";
     const bf = node.balanceFactor ?? 0;
-    if (Math.abs(bf) > 1) return "#ef4444"; // Red - imbalanced
-    return "#22c55e"; // Green - balanced
+    if (Math.abs(bf) > 1) return "#ef4444";
+    return "#22c55e";
   };
 
   const renderNode = (node: AVLNode | null): JSX.Element | null => {
@@ -315,7 +366,7 @@ export const AVLTreeVisualizer = () => {
           cy={node.y}
           r="22"
           fill={getNodeColor(node)}
-          className="transition-all duration-300"
+          className="transition-all duration-500"
         />
         <text
           x={node.x}
@@ -326,7 +377,6 @@ export const AVLTreeVisualizer = () => {
         >
           {node.value}
         </text>
-        {/* Balance factor label */}
         <text
           x={node.x}
           y={node.y - 30}
@@ -348,9 +398,18 @@ export const AVLTreeVisualizer = () => {
     return checkBalance(root);
   };
 
+  const getPhaseLabel = () => {
+    switch (stepPhase) {
+      case 'detecting': return 'Detecting Imbalance';
+      case 'rotating': return 'Performing Rotation';
+      case 'complete': return 'Rotation Complete';
+      default: return '';
+    }
+  };
+
   const controls = (
     <div className="space-y-4">
-      <div className="flex gap-2">
+      <div className="flex gap-2 flex-wrap">
         <Input
           type="number"
           value={inputValue}
@@ -361,47 +420,78 @@ export const AVLTreeVisualizer = () => {
           onKeyDown={(e) => e.key === "Enter" && addNode()}
         />
         <Button onClick={addNode} disabled={isBalancing}>Add Node</Button>
-        <Button variant="outline" onClick={clearTree} disabled={isBalancing}>Clear</Button>
+        <Button variant="outline" onClick={clearTree} disabled={isBalancing}>
+          <RotateCcw className="h-4 w-4 mr-1" />
+          Clear
+        </Button>
       </div>
-      <div className="flex gap-2 items-center">
+      
+      <div className="flex gap-2 items-center flex-wrap">
         <Button 
           onClick={balanceTree} 
-          disabled={isBalancing || !root}
+          disabled={isBalancing || !root || isTreeBalanced()}
           className="bg-emerald-600 hover:bg-emerald-700 text-white"
         >
           {isBalancing ? "Balancing..." : "Balance Tree"}
         </Button>
+        
+        {isBalancing && (
+          <Button 
+            onClick={togglePause}
+            variant="outline"
+            className="gap-1"
+          >
+            {isPaused ? (
+              <>
+                <Play className="h-4 w-4" />
+                Resume
+              </>
+            ) : (
+              <>
+                <Pause className="h-4 w-4" />
+                Pause
+              </>
+            )}
+          </Button>
+        )}
+        
         {root && (
           <Badge variant={isTreeBalanced() ? "default" : "destructive"}>
             {isTreeBalanced() ? "Balanced" : "Unbalanced"}
           </Badge>
         )}
+        
+        {isBalancing && stepCount > 0 && (
+          <Badge variant="secondary">Step {stepCount}</Badge>
+        )}
       </div>
+      
       <div className="flex items-center gap-4">
         <span className="text-sm text-muted-foreground">Animation Speed:</span>
         <Slider
           value={speed}
           onValueChange={setSpeed}
-          min={200}
-          max={1500}
-          step={100}
-          className="w-32"
+          min={500}
+          max={3000}
+          step={250}
+          className="w-40"
           disabled={isBalancing}
         />
-        <span className="text-sm text-muted-foreground">{speed[0]}ms</span>
+        <span className="text-sm text-muted-foreground">{(speed[0] / 1000).toFixed(1)}s</span>
       </div>
-      <div className="flex gap-4 text-xs">
+      
+      <div className="flex gap-4 text-xs flex-wrap">
         <div className="flex items-center gap-1">
           <div className="w-3 h-3 rounded-full bg-emerald-500"></div>
-          <span className="text-muted-foreground">Balanced</span>
+          <span className="text-muted-foreground">Balanced (|BF| ≤ 1)</span>
         </div>
         <div className="flex items-center gap-1">
           <div className="w-3 h-3 rounded-full bg-red-500"></div>
-          <span className="text-muted-foreground">Imbalanced</span>
+          <span className="text-muted-foreground">Imbalanced (|BF| &gt; 1)</span>
         </div>
         <div className="flex items-center gap-1">
           <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-          <span className="text-muted-foreground">Rotating</span>
+          <span className="text-muted-foreground">Currently Rotating</span>
         </div>
       </div>
     </div>
@@ -410,26 +500,49 @@ export const AVLTreeVisualizer = () => {
   return (
     <VisualizationContainer
       title="AVL Tree Visualizer"
-      description="Build an unbalanced BST, then watch step-by-step AVL balancing with rotations. BF = Balance Factor (left height - right height)."
+      description="Build an unbalanced BST by adding nodes, then click 'Balance Tree' to watch step-by-step AVL rotations. BF = Balance Factor (left subtree height − right subtree height)."
       controls={controls}
     >
-      <div className="w-full min-h-[400px] relative">
+      <div className="w-full min-h-[450px] relative">
         {currentStep && (
-          <div className="absolute top-0 left-0 right-0 bg-muted/90 backdrop-blur-sm p-3 rounded-lg border z-10">
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="text-chart-4 border-chart-4">
-                {currentStep.type} Rotation
-              </Badge>
-              <span className="text-sm">{currentStep.description}</span>
+          <div className="absolute top-0 left-0 right-0 bg-card/95 backdrop-blur-sm p-4 rounded-lg border shadow-lg z-10 space-y-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              {stepPhase && (
+                <Badge 
+                  variant="outline" 
+                  className={
+                    stepPhase === 'detecting' ? 'text-red-500 border-red-500' :
+                    stepPhase === 'rotating' ? 'text-yellow-500 border-yellow-500' :
+                    'text-emerald-500 border-emerald-500'
+                  }
+                >
+                  {getPhaseLabel()}
+                </Badge>
+              )}
+              {currentStep.type && stepPhase === 'rotating' && (
+                <Badge className="bg-blue-600 text-white">
+                  {currentStep.type} Rotation
+                </Badge>
+              )}
+              {isPaused && (
+                <Badge variant="secondary" className="animate-pulse">
+                  Paused
+                </Badge>
+              )}
             </div>
+            <p className="text-sm font-medium">{currentStep.description}</p>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              {currentStep.detailedExplanation}
+            </p>
           </div>
         )}
-        <svg viewBox="0 0 800 400" className="w-full h-full">
+        
+        <svg viewBox="0 0 800 400" className="w-full h-full mt-2">
           {positionedRoot ? (
             renderNode(positionedRoot)
           ) : (
             <text x="400" y="200" textAnchor="middle" className="fill-muted-foreground">
-              Add nodes to build your tree
+              Add nodes to build your tree (try: 50, 30, 70, 20, 10)
             </text>
           )}
         </svg>
